@@ -46,6 +46,12 @@ function setLoading(isLoading) {
   else hide('loading');
 }
 
+function setButtonDisabledIfPresent(id, disabled) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.disabled = Boolean(disabled);
+}
+
 function setTextIfPresent(id, value) {
   const node = el(id);
   if (!node) return;
@@ -132,6 +138,77 @@ function renderRecipe(recipe) {
   show('recipe-content');
 }
 
+function renderSavedRecipes(recipes) {
+  const container = document.getElementById('saved-list');
+  if (!container) return;
+
+  container.innerHTML = '';
+  if (!recipes || !recipes.length) {
+    container.innerHTML = '<p class="empty-state compact">No recipes saved yet.</p>';
+    return;
+  }
+
+  recipes.forEach((recipe) => {
+    const card = document.createElement('article');
+    card.className = 'saved-card';
+    card.innerHTML = `
+      <div class="saved-card-top">
+        <h3>${recipe.recipe_name}</h3>
+        <span>${recipe.saved_at}</span>
+      </div>
+      <p>${(recipe.ingredients || []).join(', ')}</p>
+      <div class="saved-meta">
+        <span>${recipe.cooking_time || ''}</span>
+        <span>${recipe.servings || ''}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function loadSavedRecipes() {
+  const container = document.getElementById('saved-list');
+  try {
+    const response = await fetch('/api/recipes');
+    const recipes = await response.json();
+    renderSavedRecipes(recipes);
+  } catch (error) {
+    if (container) {
+      container.innerHTML = '<p class="empty-state compact">Saved recipes could not be loaded.</p>';
+    }
+  }
+}
+
+async function saveRecipe() {
+  const statusEl = document.getElementById('save-status');
+
+  if (!currentRecipe) {
+    if (statusEl) statusEl.textContent = 'Generate a recipe before saving.';
+    return;
+  }
+
+  setButtonDisabledIfPresent('save-btn', true);
+  if (statusEl) statusEl.textContent = 'Saving...';
+
+  try {
+    const response = await fetch('/api/recipes/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentRecipe),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data || !data.ok) {
+      throw new Error('Save failed');
+    }
+
+    if (statusEl) statusEl.textContent = 'Recipe saved.';
+    await loadSavedRecipes();
+  } catch (error) {
+    if (statusEl) statusEl.textContent = 'Recipe could not be saved.';
+    setButtonDisabledIfPresent('save-btn', false);
+  }
+}
+
 // Main button handler: send request -> show errors or show recipe.
 async function generateRecipe() {
   const requestBody = buildRecipeRequest();
@@ -143,6 +220,7 @@ async function generateRecipe() {
   }
 
   setLoading(true);
+  setButtonDisabledIfPresent('save-btn', true);
   try {
     const result = await fetchRecipeFromApi(requestBody);
 
@@ -152,6 +230,7 @@ async function generateRecipe() {
     }
 
     renderRecipe(result.recipe);
+    setButtonDisabledIfPresent('save-btn', false);
 
     // Optional: if custom mode uses recipeIdea to fill ingredients, keep the 5 boxes in sync.
     if (customMode && Array.isArray(result.recipe?.inputIngredients)) {
@@ -172,3 +251,11 @@ el('mode-toggle').addEventListener('click', () => {
 el('generate-btn').addEventListener('click', generateRecipe);
 
 syncModeUI();
+
+const saveBtn = document.getElementById('save-btn');
+if (saveBtn) saveBtn.addEventListener('click', saveRecipe);
+
+const refreshBtn = document.getElementById('refresh-btn');
+if (refreshBtn) refreshBtn.addEventListener('click', loadSavedRecipes);
+
+loadSavedRecipes();
