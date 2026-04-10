@@ -1,8 +1,11 @@
+import os
+import re
+
 from flask import Flask, request, jsonify, send_from_directory
 from http import HTTPStatus
 from typing import Any, Dict, List, Tuple
-import os
-import re
+
+import ai
 
 app = Flask(__name__, static_folder='static')
 
@@ -109,6 +112,42 @@ def ingredients_api():
 
     status, body = api_extract_ingredients(data)
     return jsonify(body), int(status)
+
+
+@app.route("/api/recipe/generate", methods=["POST"])
+def generate_recipe():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON body."}), 400
+
+    # Support both payload styles:
+    # - Old: { ingredients: [...], custom_name: "..." }
+    # - Current mode-based: { mode: "5"|"custom", ingredients: [...], recipeName, recipeIdea }
+    custom_name = normalize_ingredient(data.get("custom_name")) or normalize_ingredient(
+        data.get("recipeName")
+    )
+
+    if isinstance(data.get("ingredients"), list):
+        ingredients = [normalize_ingredient(x) for x in (data.get("ingredients") or [])]
+        ingredients = [x for x in ingredients if x]
+        if len(ingredients) != 5:
+            return jsonify({"error": "Please enter exactly 5 ingredients."}), 400
+    else:
+        ingredients, errors = extract_ingredients_from_payload(data)
+        if errors:
+            # Keep this endpoint's error shape compatible with the older front-end.
+            return jsonify({"error": errors[0]}), 400
+
+        if len(ingredients) != 5:
+            return jsonify({"error": "Please enter exactly 5 ingredients."}), 400
+
+    try:
+        recipe = ai.generate_recipe(ingredients, custom_name=custom_name)
+        return jsonify(recipe)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 if __name__ == '__main__':

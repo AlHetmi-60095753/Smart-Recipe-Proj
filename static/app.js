@@ -12,6 +12,8 @@ const ingredientIds = [
 
 let customMode = false;
 
+let currentRecipe = null;
+
 // Get the 5 ingredient input values from the page.
 function getIngredients() {
   return ingredientIds.map((id) => el(id).value.trim()).filter(Boolean);
@@ -44,6 +46,12 @@ function setLoading(isLoading) {
   else hide('loading');
 }
 
+function setTextIfPresent(id, value) {
+  const node = el(id);
+  if (!node) return;
+  node.textContent = value == null ? '' : String(value);
+}
+
 // Toggle inputs and label based on the current mode.
 function syncModeUI() {
   el('mode-toggle').setAttribute('aria-pressed', String(customMode));
@@ -60,10 +68,10 @@ function syncModeUI() {
 }
 
 // Build the JSON payload that we send to the Python API.
-function buildIngredientsRequest() {
+function buildRecipeRequest() {
   clearError();
 
-  //  If its Custom mode: take the comma-separated list and send it as recipeIdea.
+  // If its Custom mode: take the comma-separated list and send it as recipeIdea.
   if (customMode) {
     const recipeIdea = el('recipe-idea').value.trim();
     return {
@@ -81,34 +89,52 @@ function buildIngredientsRequest() {
   };
 }
 
-// Call the API in app.py: POST /api/ingredients
-async function fetchIngredientsFromApi(requestBody) {
-  const response = await fetch('/api/ingredients', {
+// Call the AI-backed API in app.py: POST /api/recipe/generate
+async function fetchRecipeFromApi(requestBody) {
+  const response = await fetch('/api/recipe/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   });
 
   const data = await response.json().catch(() => null);
-  if (!data) {
-    return { ok: false, errors: ['Server returned invalid JSON.'], ingredients: [] };
+  if (!data) return { ok: false, error: 'Server returned invalid JSON.' };
+
+  if (!response.ok) {
+    return { ok: false, error: data.error || 'Recipe generation failed.' };
   }
 
-  return data;
+  return { ok: true, recipe: data };
 }
 
 // Put the API results onto the page.
-function renderIngredients(ingredients) {
-  el('ingredients-used').textContent = ingredients.join(', ');
-  el('recipe-title').textContent = 'Ingredients received';
+function renderRecipe(recipe) {
+  currentRecipe = recipe;
+
+  setTextIfPresent('recipe-title', recipe.recipeName || 'Recipe generated');
+  setTextIfPresent('ingredients-used', (recipe.ingredientsUsed || []).join(', '));
+
+  // These elements may or may not exist depending on your HTML. We set them only if present.
+  setTextIfPresent('cooking-time', recipe.cookingTime || '');
+  setTextIfPresent('servings', recipe.servings || '');
+
+  const stepsList = el('steps-list');
+  if (stepsList && Array.isArray(recipe.steps)) {
+    stepsList.innerHTML = '';
+    recipe.steps.forEach((step) => {
+      const item = document.createElement('li');
+      item.textContent = step;
+      stepsList.appendChild(item);
+    });
+  }
 
   hide('recipe-empty');
   show('recipe-content');
 }
 
-// Main button handler: send request -> show errors or show ingredients.
-async function generateIngredients() {
-  const requestBody = buildIngredientsRequest();
+// Main button handler: send request -> show errors or show recipe.
+async function generateRecipe() {
+  const requestBody = buildRecipeRequest();
 
   // Small client-side help to avoid calling the API with obvious bad input.
   if (!customMode && requestBody.ingredients.length !== 5) {
@@ -118,22 +144,21 @@ async function generateIngredients() {
 
   setLoading(true);
   try {
-    const result = await fetchIngredientsFromApi(requestBody);
+    const result = await fetchRecipeFromApi(requestBody);
 
     if (!result.ok) {
-      const msg = (result.errors && result.errors[0]) || 'Request failed.';
-      showError(msg);
+      showError(result.error || 'Request failed.');
       return;
     }
 
-    renderIngredients(result.ingredients || []);
+    renderRecipe(result.recipe);
 
-    // Optional: if custom mode returns ingredients, copy them into the 5 boxes.
-    if (customMode && Array.isArray(result.ingredients)) {
-      setIngredientInputs(result.ingredients);
+    // Optional: if custom mode uses recipeIdea to fill ingredients, keep the 5 boxes in sync.
+    if (customMode && Array.isArray(result.recipe?.inputIngredients)) {
+      setIngredientInputs(result.recipe.inputIngredients);
     }
   } catch (error) {
-    showError('Failed to call /api/ingredients.');
+    showError('Failed to call /api/recipe/generate.');
   } finally {
     setLoading(false);
   }
@@ -144,6 +169,6 @@ el('mode-toggle').addEventListener('click', () => {
   customMode = !customMode;
   syncModeUI();
 });
-el('generate-btn').addEventListener('click', generateIngredients);
+el('generate-btn').addEventListener('click', generateRecipe);
 
 syncModeUI();
