@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Recipe Generator</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero">
+      
+      <h1>AI Recipe Generator</h1>
+      <p class="hero-copy">
+        Generate meals from 5 ingredients or create a recipe from your own recipe name and ingredient list.
+      </p>
+      <p class="student-chip">Student ID: <span id="student-id-top">loading...</span></p>
+    </section>
+
+    <section class="panel input-panel">
+      <div class="panel-grid">
+        <div class="panel-block">
+          <h2>Recipe Input</h2>
+          <p class="panel-copy">Use only your selected ingredients plus basic pantry staples.</p>
+
+          <div class="mode-row">
+            <span class="field-label">Mode</span>
+            <button id="mode-toggle" class="toggle-pill" type="button" aria-pressed="false">
+              <span class="toggle-dot"></span>
+              <span id="mode-label">5 Ingredients</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-block">
+          <h3>Custom Recipe Input</h3>
+          <label class="field-label" for="recipe-name">Recipe Name</label>
+          <input id="recipe-name" type="text" placeholder="e.g. Creamy Garlic Chicken Pasta" />
+
+          <label class="field-label" for="recipe-idea">Ingredients List</label>
+          <input id="recipe-idea" type="text" placeholder="chicken, pasta, garlic, cream, parmesan" />
+        </div>
+      </div>
+
+      <div class="ingredients-block">
+        <label class="field-label" for="ingredient-1">Enter 5 Ingredients</label>
+        <div class="ingredients-grid">
+          <input id="ingredient-1" type="text" placeholder="Ingredient 1" />
+          <input id="ingredient-2" type="text" placeholder="Ingredient 2" />
+          <input id="ingredient-3" type="text" placeholder="Ingredient 3" />
+          <input id="ingredient-4" type="text" placeholder="Ingredient 4" />
+          <input id="ingredient-5" type="text" placeholder="Ingredient 5" />
+        </div>
+        <p id="error-msg" class="error hidden"></p>
+      </div>
+
+      <div class="actions-row">
+        <button id="generate-btn" class="primary-btn" type="button">Generate Recipe</button>
+        <div id="loading" class="loading hidden">
+          <div class="spinner"></div>
+          <span>Generating recipe...</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="results-grid">
+      <article class="panel recipe-panel">
+        <h2>Generated Recipe</h2>
+        <div id="recipe-empty" class="empty-state">
+          Your generated recipe will appear here after you submit 5 ingredients.
+        </div>
+
+        <div id="recipe-content" class="hidden">
+          <h3 id="recipe-title" class="recipe-title"></h3>
+          <div class="detail-stack">
+            <div>
+              <p class="detail-label">Ingredients Used</p>
+              <p id="ingredients-used" class="detail-copy"></p>
+            </div>
+            <div>
+              <p class="detail-label">Steps</p>
+              <ol id="steps-list" class="steps-list"></ol>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <aside class="panel details-panel">
+        <h2>Recipe Details</h2>
+        <div class="detail-card">
+          <span class="detail-icon">Time</span>
+          <strong id="cooking-time">Waiting for recipe</strong>
+        </div>
+        <div class="detail-card">
+          <span class="detail-icon">Serves</span>
+          <strong id="servings">Waiting for recipe</strong>
+        </div>
+        <button id="save-btn" class="secondary-btn" type="button" disabled>Save Recipe</button>
+        <p id="save-status" class="save-status"></p>
+      </aside>
+    </section>
+
+    <section class="panel saved-panel">
+      <div class="saved-header">
+        <h2>Saved Recipes</h2>
+        <button id="refresh-btn" class="ghost-btn" type="button">Refresh</button>
+      </div>
+      <div id="saved-list" class="saved-list"></div>
+    </section>
+  </main>
+
+  <footer id="student-footer">
+    Student ID: <span id="student-id-display">loading...</span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
