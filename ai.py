@@ -9,7 +9,7 @@ load_dotenv()
 
 MODEL = "gemini-2.5-flash-lite"
 API_ENDPOINT = (
-    f"https://aiplatform.googleapis.com/v1/publishers/google/models/{MODEL}:generateContent"
+    f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 )
 PANTRY_STAPLES = ["salt", "pepper", "water", "oil"]
 
