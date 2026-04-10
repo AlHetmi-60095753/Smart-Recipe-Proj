@@ -1,11 +1,16 @@
 import os
 import re
+import json
 
 from flask import Flask, request, jsonify, send_from_directory
 from http import HTTPStatus
 from typing import Any, Dict, List, Tuple
 
 import ai
+import db
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='static')
 
@@ -150,6 +155,77 @@ def generate_recipe():
         return jsonify({"error": str(exc)}), 500
 
 
+@app.route("/api/recipes/save", methods=["POST"])
+def save_recipe():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "Invalid JSON body."}), 400
+
+    # Keep this aligned with the recipe JSON coming from ai.generate_recipe()
+    try:
+        recipe_name = str(data["recipeName"]).strip()
+    except Exception:
+        return jsonify({"ok": False, "error": "recipeName is required."}), 400
+
+    conn = db.get_connection()
+    try:
+        cur = conn.execute(
+            """
+            INSERT INTO recipes (
+                recipe_name,
+                input_mode,
+                prompt_name,
+                ingredients,
+                pantry_staples,
+                steps,
+                cooking_time,
+                servings
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                recipe_name,
+                data.get("inputMode", "five-ingredients"),
+                data.get("promptName", ""),
+                json.dumps(data.get("ingredientsUsed", [])),
+                json.dumps(data.get("pantryStaples", [])),
+                json.dumps(data.get("steps", [])),
+                data.get("cookingTime", ""),
+                data.get("servings", ""),
+            ),
+        )
+        conn.commit()
+        recipe_id = cur.lastrowid
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True, "recipe_id": recipe_id})
+
+
+@app.route("/api/recipes")
+def list_recipes():
+    conn = db.get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, recipe_name, input_mode, prompt_name, ingredients, cooking_time, servings, saved_at
+            FROM recipes
+            ORDER BY saved_at DESC, id DESC
+            LIMIT 6
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+    recipes = []
+    for row in rows:
+        item = dict(row)
+        item["ingredients"] = json.loads(item["ingredients"])
+        recipes.append(item)
+
+    return jsonify(recipes)
+
+
 if __name__ == '__main__':
+    db.init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
