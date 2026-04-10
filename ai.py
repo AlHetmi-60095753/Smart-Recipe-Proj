@@ -35,3 +35,17 @@ def _call(prompt: str) -> str:
 
     result = response.json()
     return result["candidates"][0]["content"]["parts"][0]["text"]
+
+def _clean_json(text: str) -> str:
+    text = re.sub(r"^```(?:json)?\s*", "", text.strip())
+    text = re.sub(r"\s*```$", "", text)
+    return text.strip()
+
+
+def _normalize_list(values: list[str]) -> list[str]:
+    normalized = []
+    for value in values:
+        cleaned = value.strip()
+        if cleaned:
+            normalized.append(cleaned)
+    return normalized
