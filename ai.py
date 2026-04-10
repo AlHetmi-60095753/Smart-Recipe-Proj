@@ -49,3 +49,50 @@ def _normalize_list(values: list[str]) -> list[str]:
         if cleaned:
             normalized.append(cleaned)
     return normalized
+
+def generate_recipe(
+    ingredients: list[str],
+    custom_name: str = "",
+    pantry_staples: list[str] | None = None,
+) -> dict:
+    pantry_staples = pantry_staples or PANTRY_STAPLES
+    ingredients = _normalize_list(ingredients)
+
+    if len(ingredients) != 5:
+        raise ValueError("Exactly 5 ingredients are required.")
+
+    custom_name = custom_name.strip()
+    mode = "custom" if custom_name else "five-ingredients"
+
+    prompt = f"""
+You are generating a recipe for a student web app.
+
+Rules:
+- Use all 5 provided ingredients.
+- Do not introduce any extra ingredients except these pantry staples: {json.dumps(pantry_staples)}.
+- If an ingredient is not in the provided list or pantry staples, do not mention it.
+- Keep the recipe practical and easy to follow.
+- Return ONLY valid JSON with no markdown.
+
+Input mode: {mode}
+Recipe name request: {custom_name or "None"}
+Provided ingredients: {json.dumps(ingredients)}
+
+JSON format:
+{{
+  "recipeName": "string",
+  "ingredientsUsed": ["string", "string"],
+  "steps": ["string", "string", "string"],
+  "cookingTime": "string",
+  "servings": "string"
+}}
+"""
+
+    recipe = json.loads(_clean_json(_call(prompt)))
+    recipe["ingredientsUsed"] = _normalize_list(recipe.get("ingredientsUsed", []))
+    recipe["steps"] = _normalize_list(recipe.get("steps", []))
+    recipe["pantryStaples"] = pantry_staples
+    recipe["inputMode"] = mode
+    recipe["promptName"] = custom_name
+    recipe["inputIngredients"] = ingredients
+    return recipe
