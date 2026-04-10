@@ -156,3 +156,66 @@ class TestSaveRecipe(unittest.TestCase):
         # ingredients and pantry_staples columns should be JSON strings
         self.assertEqual(json.loads(call_args[3]), self.valid_recipe["ingredientsUsed"])
         self.assertEqual(json.loads(call_args[4]), self.valid_recipe["pantryStaples"])
+
+class TestListRecipes(unittest.TestCase):
+    def setUp(self):
+        self.client = flask_app.app.test_client()
+ 
+    def _make_row(self, overrides=None):
+        base = {
+            "id": 1,
+            "recipe_name": "Pancakes",
+            "input_mode": "five-ingredients",
+            "prompt_name": "",
+            "ingredients": json.dumps(["egg", "milk"]),
+            "cooking_time": "15 minutes",
+            "servings": "2",
+            "saved_at": "2024-01-01T00:00:00",
+        }
+        if overrides:
+            base.update(overrides)
+        return base
+ 
+    @patch("app.db.get_connection")
+    def test_list_returns_parsed_ingredients(self, mock_get_conn):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [self._make_row()]
+        mock_get_conn.return_value = mock_conn
+        res = self.client.get("/api/recipes")
+        self.assertEqual(res.status_code, 200)
+        recipes = res.get_json()
+        self.assertIsInstance(recipes[0]["ingredients"], list)
+        self.assertEqual(recipes[0]["ingredients"], ["egg", "milk"])
+ 
+    @patch("app.db.get_connection")
+    def test_list_returns_empty_on_no_rows(self, mock_get_conn):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = []
+        mock_get_conn.return_value = mock_conn
+        res = self.client.get("/api/recipes")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.get_json(), [])
+ 
+    @patch("app.db.get_connection")
+    def test_list_handles_malformed_ingredients_json(self, mock_get_conn):
+        """Row with invalid JSON in ingredients should not crash the endpoint."""
+        bad_row = self._make_row({"ingredients": "NOT_JSON"})
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = [bad_row]
+        mock_get_conn.return_value = mock_conn
+        res = self.client.get("/api/recipes")
+        # Should still return 200; ingredients falls back to []
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.get_json()[0]["ingredients"], [])
+ 
+    @patch("app.db.get_connection")
+    def test_list_closes_connection(self, mock_get_conn):
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchall.return_value = []
+        mock_get_conn.return_value = mock_conn
+        self.client.get("/api/recipes")
+        mock_conn.close.assert_called_once()
+ 
+ 
+if __name__ == "__main__":
+    unittest.main()
