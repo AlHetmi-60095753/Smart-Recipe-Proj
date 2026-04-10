@@ -1,0 +1,51 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull latest Docker image
+      run: |
+        docker pull ghcr.io/${{ github.repository }}:latest
+
+    - name: Trigger cloud deployment via webhook
+      run: |
+        if [ -z "${{ secrets.DEPLOY_WEBHOOK_URL }}" ]; then
+          echo " DEPLOY_WEBHOOK_URL secret not configured"
+          echo "Add your cloud platform's deploy webhook URL to repository secrets"
+          exit 0
+        fi
+        
+        curl -X POST \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}" \
+          -d '{
+            "ref": "${{ github.ref }}",
+            "sha": "${{ github.sha }}",
+            "image": "ghcr.io/${{ github.repository }}:latest"
+          }' \
+          ${{ secrets.DEPLOY_WEBHOOK_URL }}
+
+    - name: Deployment notification
+      if: success()
+      run: |
+        echo "Deployment triggered for commit ${{ github.sha }}"
+        echo "Image: ghcr.io/${{ github.repository }}:latest"
+        echo "Branch: ${{ github.ref_name }}"
