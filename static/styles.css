@@ -1,18 +1,3 @@
-:root {
-  --bg: #111a31;
-  --panel: #243049;
-  --panel-soft: #2d3b57;
-  --text: #f4f7fb;
-  --muted: #96a6c3;
-  --line: rgba(255, 255, 255, 0.06);
-  --green: #1fbe57;
-  --green-strong: #17a64a;
-  --blue: #437ee8;
-  --blue-strong: #356ed4;
-  --danger: #ef7f84;
-  --shadow: 0 28px 60px rgba(4, 10, 24, 0.35);
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -24,7 +9,7 @@ body {
   background:
     radial-gradient(circle at top center, rgba(87, 127, 221, 0.14), transparent 28%),
     linear-gradient(180deg, #111a31 0%, #0f1729 100%);
-  color: var(--text);
+  color: #f4f7fb;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   padding: 32px 20px 88px;
 }
@@ -55,7 +40,7 @@ body {
 .hero-copy {
   max-width: 760px;
   margin: 0 auto;
-  color: var(--muted);
+  color: #96a6c3;
   line-height: 1.6;
 }
 
@@ -70,10 +55,10 @@ body {
 }
 
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: #243049;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 28px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 28px 60px rgba(4, 10, 24, 0.35);
 }
 
 .input-panel {
@@ -103,7 +88,7 @@ body {
 .detail-copy,
 .empty-state,
 .saved-card p {
-  color: var(--muted);
+  color: #96a6c3;
   line-height: 1.65;
 }
 
@@ -124,7 +109,7 @@ body {
   gap: 10px;
   border: none;
   border-radius: 999px;
-  background: var(--green);
+  background: #1fbe57;
   color: white;
   padding: 12px 18px;
   font-weight: 700;
@@ -144,7 +129,7 @@ input {
   border: 1px solid transparent;
   border-radius: 12px;
   background: #415069;
-  color: var(--text);
+  color: #f4f7fb;
   padding: 0 14px;
   outline: none;
 }
@@ -206,28 +191,28 @@ button:disabled {
 }
 
 .primary-btn {
-  background: var(--green);
+  background: #1fbe57;
   color: white;
 }
 
 .primary-btn:hover:not(:disabled) {
-  background: var(--green-strong);
+  background: #17a64a;
 }
 
 .secondary-btn {
   width: 100%;
-  background: var(--blue);
+  background: #437ee8;
   color: white;
 }
 
 .secondary-btn:hover:not(:disabled) {
-  background: var(--blue-strong);
+  background: #356ed4;
 }
 
 .ghost-btn {
   background: transparent;
   color: #dce6ff;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .loading {
@@ -283,7 +268,7 @@ button:disabled {
 
 .steps-list {
   padding-left: 18px;
-  color: var(--muted);
+  color: #96a6c3;
   line-height: 1.75;
 }
 
@@ -296,7 +281,7 @@ button:disabled {
 
 .detail-icon {
   display: block;
-  color: var(--muted);
+  color: #96a6c3;
   font-size: 0.88rem;
   margin-bottom: 6px;
 }
@@ -323,7 +308,7 @@ button:disabled {
 
 .saved-card {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 20px;
   padding: 18px;
 }
@@ -343,7 +328,7 @@ button:disabled {
 
 .saved-card-top span,
 .saved-meta {
-  color: var(--muted);
+  color: #96a6c3;
   font-size: 0.85rem;
 }
 
@@ -355,7 +340,7 @@ button:disabled {
 
 .error {
   margin-top: 12px;
-  color: var(--danger);
+  color: #ef7f84;
 }
 
 .compact {
