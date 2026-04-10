@@ -23,7 +23,7 @@ jobs:
 
     - name: Pull latest Docker image
       run: |
-        docker pull ghcr.io/${{ github.repository }}:latest
+        docker pull ghcr.io/${{ github.repository_owner }}/smart-recipe-proj:latest
 
     - name: Trigger cloud deployment via webhook
       run: |
@@ -39,7 +39,7 @@ jobs:
           -d '{
             "ref": "${{ github.ref }}",
             "sha": "${{ github.sha }}",
-            "image": "ghcr.io/${{ github.repository }}:latest"
+            "image": "ghcr.io/${{ github.repository_owner }}/smart-recipe-proj:latest"
           }' \
           ${{ secrets.DEPLOY_WEBHOOK_URL }}
 
@@ -47,5 +47,5 @@ jobs:
       if: success()
       run: |
         echo "Deployment triggered for commit ${{ github.sha }}"
-        echo "Image: ghcr.io/${{ github.repository }}:latest"
+        echo "Image: ghcr.io/${{ github.repository_owner }}/smart-recipe-proj:latest"
         echo "Branch: ${{ github.ref_name }}"
