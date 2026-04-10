@@ -50,13 +50,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set lowercase repo owner
+      id: lowercase_owner
+      run: echo "lower=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
         context: .
         push: true
         tags: |
-          ghcr.io/${{ github.repository_owner }}/smart-recipe-proj:latest
-          ghcr.io/${{ github.repository_owner }}/smart-recipe-proj:${{ github.sha }}
+          ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest
+          ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
