@@ -169,32 +169,35 @@ def save_recipe():
 
     conn = db.get_connection()
     try:
-        cur = conn.execute(
-            """
-            INSERT INTO recipes (
-                recipe_name,
-                input_mode,
-                prompt_name,
-                ingredients,
-                pantry_staples,
-                steps,
-                cooking_time,
-                servings
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                recipe_name,
-                data.get("inputMode", "five-ingredients"),
-                data.get("promptName", ""),
-                json.dumps(data.get("ingredientsUsed", [])),
-                json.dumps(data.get("pantryStaples", [])),
-                json.dumps(data.get("steps", [])),
-                data.get("cookingTime", ""),
-                data.get("servings", ""),
-            ),
-        )
-        conn.commit()
-        recipe_id = cur.lastrowid
+        try:
+            cur = conn.execute(
+                """
+                INSERT INTO recipes (
+                    recipe_name,
+                    input_mode,
+                    prompt_name,
+                    ingredients,
+                    pantry_staples,
+                    steps,
+                    cooking_time,
+                    servings
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    recipe_name,
+                    data.get("inputMode", "five-ingredients"),
+                    data.get("promptName", ""),
+                    json.dumps(data.get("ingredientsUsed", [])),
+                    json.dumps(data.get("pantryStaples", [])),
+                    json.dumps(data.get("steps", [])),
+                    data.get("cookingTime", ""),
+                    data.get("servings", ""),
+                ),
+            )
+            conn.commit()
+            recipe_id = cur.lastrowid
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         conn.close()
 
@@ -219,7 +222,10 @@ def list_recipes():
     recipes = []
     for row in rows:
         item = dict(row)
-        item["ingredients"] = json.loads(item["ingredients"])
+        try:
+            item["ingredients"] = json.loads(item["ingredients"])
+        except (json.JSONDecodeError, ValueError):
+            item["ingredients"] = []
         recipes.append(item)
 
     return jsonify(recipes)
