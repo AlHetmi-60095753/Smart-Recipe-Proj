@@ -21,9 +21,13 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set lowercase repo owner
+      id: lowercase_owner
+      run: echo "lower=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
     - name: Pull latest Docker image
       run: |
-        docker pull ghcr.io/${{ github.repository }}:latest
+        docker pull ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest
 
     - name: Trigger cloud deployment via webhook
       run: |
@@ -39,13 +43,13 @@ jobs:
           -d '{
             "ref": "${{ github.ref }}",
             "sha": "${{ github.sha }}",
-            "image": "ghcr.io/${{ github.repository }}:latest"
+            "image": "ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest"
           }' \
           ${{ secrets.DEPLOY_WEBHOOK_URL }}
 
     - name: Deployment notification
       if: success()
       run: |
-        echo "Deployment triggered for commit ${{ github.sha }}"
-        echo "Image: ghcr.io/${{ github.repository }}:latest"
+        echo "✅ Deployment triggered for commit ${{ github.sha }}"
+        echo "Image: ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest"
         echo "Branch: ${{ github.ref_name }}"
