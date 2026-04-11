@@ -1,55 +1,96 @@
-name: CD Pipeline
+# .github/workflows/deploy.yml
+#
+# Build → smoke test → push to Docker Hub → trigger Render deploy (on main push only).
+#
+# Required GitHub Secrets (Settings → Secrets → Actions):
+#   DOCKERHUB_USERNAME   your Docker Hub username
+#   DOCKERHUB_TOKEN      Docker Hub access token (not your password)
+#   RENDER_DEPLOY_URL    Deploy Hook URL from your Render web service
+#
+# Optional GitHub Variables (Settings → Variables → Actions):
+#   APP_VERSION          e.g. "1.2.0" — passed into container for smoke run (optional)
+#   BANNER_MESSAGE       e.g. "Lecture demo" — optional; ignored if app does not read it
+#   CARD_COLOR           e.g. "#27AE60" — optional
+#
+# Create a Docker Hub repository named smart-recipe-proj (or change IMAGE_NAME below).
+
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/smart-recipe-proj
 
 jobs:
-  deploy:
+  build-and-push:
+    name: Build · Test · Push
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Log in to GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Set lowercase repo owner
-      id: lowercase_owner
-      run: echo "lower=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t $IMAGE_NAME:${{ github.sha }} \
+            -t $IMAGE_NAME:latest \
+            .
 
-    - name: Pull latest Docker image
-      run: |
-        docker pull ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest
+      - name: Smoke test
+        run: |
+          docker run --rm -d \
+            --name test-container \
+            -p 5000:5000 \
+            -e PORT=5000 \
+            -e APP_VERSION="${{ vars.APP_VERSION || '1.0.0' }}" \
+            -e BANNER_MESSAGE="${{ vars.BANNER_MESSAGE || 'CI test run' }}" \
+            -e CARD_COLOR="${{ vars.CARD_COLOR || '#27AE60' }}" \
+            $IMAGE_NAME:latest
 
-    - name: Trigger cloud deployment via webhook
-      run: |
-        if [ -z "${{ secrets.DEPLOY_WEBHOOK_URL }}" ]; then
-          echo " DEPLOY_WEBHOOK_URL secret not configured"
-          echo "Add your cloud platform's deploy webhook URL to repository secrets"
-          exit 0
-        fi
-        
-        curl -X POST \
-          -H "Content-Type: application/json" \
-          -H "Authorization: Bearer ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}" \
-          -d '{
-            "ref": "${{ github.ref }}",
-            "sha": "${{ github.sha }}",
-            "image": "ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest"
-          }' \
-          ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          sleep 4
 
-    - name: Deployment notification
-      if: success()
-      run: |
-        echo "✅ Deployment triggered for commit ${{ github.sha }}"
-        echo "Image: ghcr.io/${{ steps.lowercase_owner.outputs.lower }}/smart-recipe-proj:latest"
-        echo "Branch: ${{ github.ref_name }}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health)
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed"
+            docker logs test-container
+            exit 1
+          fi
+          echo "Health check passed"
+          docker stop test-container
+
+      - name: Push to Docker Hub
+        if: github.event_name == 'push'
+        run: |
+          docker push $IMAGE_NAME:${{ github.sha }}
+          docker push $IMAGE_NAME:latest
+
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          echo "Triggering deploy on Render..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.RENDER_DEPLOY_URL }}")
+          echo "Render response: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ] && [ "$HTTP_STATUS" != "201" ]; then
+            echo "Deploy trigger failed (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+          echo "Deploy triggered successfully"
